@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitoramento - TPG</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -63,8 +64,313 @@
     th { background: var(--bg); font-weight: 600; color: var(--text-light); text-transform: uppercase; cursor: pointer; }
     
     .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .badge-online { background: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
     .badge-offline { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
     .badge-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+    
+    /* Antenna Styles */
+    /* ===== MODERN ANTENNAS STYLES ===== */
+    .ant-stat-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .ant-stat-box {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .ant-stat-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .ant-stat-val { font-size: 1.35rem; font-weight: 700; color: var(--text); }
+    .ant-stat-lbl { font-size: 0.78rem; color: var(--text-light); text-transform: uppercase; font-weight: 600; }
+
+    .antenna-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 18px;
+        margin-bottom: 25px;
+    }
+    .ant-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 20px 22px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .ant-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px -4px rgba(0,0,0,0.08);
+    }
+    .ant-card.status-online {
+        border-top: 4px solid var(--success);
+    }
+    .ant-card.status-offline {
+        border-top: 4px solid var(--danger);
+        animation: pulse-danger 2s infinite;
+    }
+    @keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+        70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .ant-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .ant-title-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .ant-name {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .ant-ip-pill {
+        font-size: 0.82rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        color: var(--primary);
+        font-weight: 600;
+        background: rgba(37,99,235,0.08);
+        padding: 3px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(37,99,235,0.18);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: fit-content;
+    }
+    .ant-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .ant-status-badge.online {
+        background: rgba(16, 185, 129, 0.12);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .ant-status-badge.offline {
+        background: rgba(239, 68, 68, 0.12);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .ant-status-badge.verificando {
+        background: rgba(59, 130, 246, 0.12);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .pulse-dot.online {
+        background: #10b981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: dotPulseGreen 1.8s infinite;
+    }
+    .pulse-dot.offline {
+        background: #ef4444;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        animation: dotPulseRed 1.8s infinite;
+    }
+    @keyframes dotPulseGreen {
+        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    @keyframes dotPulseRed {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .ant-diag-banner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 0.84rem;
+        font-weight: 500;
+        background: rgba(16, 185, 129, 0.08);
+        color: #065f46;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .ant-diag-banner.offline {
+        background: rgba(239, 68, 68, 0.08);
+        color: #991b1b;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .ant-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 10px;
+        background: var(--bg);
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+    .ant-info-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .ant-info-label {
+        font-size: 0.72rem;
+        color: var(--text-light);
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.4px;
+    }
+    .ant-info-value {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .ant-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        margin-top: 2px;
+    }
+    .btn-test-ping {
+        font-size: 0.78rem;
+        padding: 7px 16px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        border-radius: 8px;
+        cursor: pointer;
+        color: var(--text);
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.2s;
+    }
+    .btn-test-ping:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(37,99,235,0.04);
+    }
+
+    /* Modern History Panel */
+    .hist-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+        margin-top: 25px;
+    }
+    .hist-header-bar {
+        padding: 16px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.2s;
+        border-bottom: 1px solid transparent;
+    }
+    .hist-header-bar:hover {
+        background: rgba(0,0,0,0.015);
+    }
+    .hist-card.open .hist-header-bar {
+        border-bottom-color: var(--border);
+    }
+    .hist-filters-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 22px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+    }
+    .hist-filter-chip {
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 5px 14px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        color: var(--text-light);
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .hist-filter-chip.active {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+    }
+    .badge-init {
+        background: rgba(59, 130, 246, 0.12);
+        color: #2563eb;
+        border: 1px solid rgba(59, 130, 246, 0.25);
+    }
+    
+    /* Realtime & Alert Banner Styles */
+    .realtime-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.75rem; font-weight: 600; padding: 4px 10px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.25); transition: 0.3s; }
+    .realtime-badge.disconnected { background: rgba(100, 116, 139, 0.1); color: var(--secondary); border-color: rgba(100, 116, 139, 0.2); }
+    
+    .alert-banner { background: linear-gradient(90deg, #ef4444, #b91c1c); color: white; padding: 12px 25px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; animation: slideDown 0.3s ease; position: sticky; top: 68px; z-index: 45; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35); }
+    .alert-content { display: flex; align-items: center; gap: 12px; }
+    .alert-icon { font-size: 1.6rem; animation: sirenBounce 1s infinite alternate; }
+    @keyframes sirenBounce { from { transform: scale(1); } to { transform: scale(1.2); } }
+    @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .btn-alert-close { background: rgba(255,255,255,0.25); border: none; color: white; border-radius: 50%; width: 28px; height: 28px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .btn-alert-close:hover { background: rgba(255,255,255,0.4); }
+    
+    /* Toast Notifications */
+    .toast-container { position: fixed; top: 85px; right: 25px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 400px; pointer-events: none; }
+    .toast { pointer-events: auto; background: var(--card-bg); color: var(--text); padding: 14px 18px; border-radius: 12px; box-shadow: 0 10px 25px -3px rgba(0,0,0,0.25); border-left: 6px solid var(--danger); display: flex; align-items: flex-start; gap: 12px; animation: slideInRight 0.35s ease; transition: 0.3s; }
+    .toast.toast-success { border-left-color: var(--success); }
+    .toast-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+    .toast-msg { font-size: 0.85rem; color: var(--text-light); }
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .ant-card.status-desconhecido { border-left: 5px solid var(--warning); }
+    .ant-header { display: flex; justify-content: space-between; align-items: center; }
+    .ant-name { font-weight: 700; font-size: 1.05rem; color: var(--text); }
+    .ant-ip { font-size: 0.85rem; color: var(--primary); font-family: monospace; font-weight: 600; background: rgba(37,99,235,0.08); padding: 3px 8px; border-radius: 6px; width: fit-content; }
+    .ant-meta { font-size: 0.8rem; color: var(--text-light); }
     
     /* Modal Styles */
     .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
@@ -84,6 +390,11 @@
     #refresh-bar { height: 3px; background: var(--primary); width: 100%; position: absolute; bottom: 0; left: 0; transition: width 1s linear; }
     .hidden { display: none !important; }
     .text-danger { color: var(--danger); }
+    #hist-toggle-bar:hover { opacity: 0.85; }
+    #hist-toggle-bar:hover #hist-toggle-icon { color: var(--primary); }
+    .offline-urgency-low td:first-child { border-left: 4px solid #f59e0b !important; }
+    .offline-urgency-mid td:first-child { border-left: 4px solid #ef4444 !important; }
+    .offline-urgency-high td:first-child { border-left: 4px solid #8b5cf6 !important; }
 </style>
 </head>
 <body>
@@ -91,8 +402,11 @@
 <header class="header-wrapper">
     <div class="container header-content">
         <div>
-            <h1 style="margin:0; font-size: 1.5rem;">📊 TPG</h1>
-            <small style="color: var(--text-light); display: block; margin-top: 5px;">Última atualização: 14:22</small>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <h1 style="margin:0; font-size: 1.5rem;">📊 TPG</h1>
+                <span id="realtime-status-pill" class="realtime-badge disconnected">⚪ Realtime Conectando...</span>
+            </div>
+            <small style="color: var(--text-light); display: block; margin-top: 5px;">Última atualização: 15:00</small>
         </div>
         <div style="display: flex; gap: 10px;">
             <button class="btn btn-outline" onclick="toggleTheme()">🌓 Tema</button>
@@ -101,6 +415,19 @@
         <div id="refresh-bar"></div>
     </div>
 </header>
+
+<div id="antenna-alert-banner" class="alert-banner hidden">
+    <div class="alert-content">
+        <span class="alert-icon">🚨</span>
+        <div class="alert-text">
+            <strong>ALERTA DE QUEDA DE ANTENA:</strong>
+            <span id="alert-antenna-desc">Uma ou mais antenas estão inacessíveis!</span>
+        </div>
+    </div>
+    <button class="btn-alert-close" onclick="fecharAlertaAntena()" title="Fechar alerta">✕</button>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
 
 <div class="container">
     <div class="kpi-grid">
@@ -119,6 +446,11 @@
         <div class="kpi-card" style="border-left: 5px solid var(--primary);">
             <span class="kpi-title">Taxa de Sucesso</span>
             <div class="kpi-value" id="kpi-rate">0%</div>
+        </div>
+        <div class="kpi-card" style="border-left: 5px solid #8b5cf6; cursor: pointer;" onclick="switchTab('tab-antenas')">
+            <span class="kpi-title">Antenas Ativas</span>
+            <div class="kpi-value" id="kpi-antenas">0/0</div>
+            <div class="kpi-sub" id="kpi-antenas-sub" style="color: var(--text-light); font-size: 0.85rem;">Status Atual</div>
         </div>
     </div>
 
@@ -140,13 +472,19 @@
             <option value="old_eod">EOD Desatualizado</option>
             <option value="has_error">Com Erro</option>
         </select>
-        <input type="date" id="datePicker" class="search-input" value="2026-11-10" style="max-width: 160px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+            <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 500;">De:</span>
+            <input type="date" id="datePicker" class="search-input" value="2026-11-10" style="max-width: 135px;">
+            <span style="font-size: 0.85rem; color: var(--text-light); font-weight: 500;">Até:</span>
+            <input type="date" id="datePickerFim" class="search-input" value="2026-11-10" style="max-width: 135px;">
+        </div>
     </div>
 
     <div class="tabs-nav">
         <div class="tab-item active" onclick="switchTab('tab-online')">✅ Online</div>
         <div class="tab-item tab-crit" onclick="switchTab('tab-critical')">🚨 Erros</div>
         <div class="tab-item" onclick="switchTab('tab-offline')">⚠️ Offline</div>
+        <div class="tab-item" onclick="switchTab('tab-antenas')">📡 Status Antenas</div>
     </div>
 
     <div id="tab-online" class="view-section active">
@@ -172,6 +510,114 @@
                 </thead>
                 <tbody id="list-offline"></tbody>
             </table>
+        </div>
+    </div>
+
+    <div id="tab-antenas" class="view-section">
+        <!-- Cabeçalho da Seção -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <h3 style="margin: 0; color: var(--text); font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                    📡 Antenas da Garagem
+                    <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(37,99,235,0.1); color: var(--primary);">Monitoramento Contínuo</span>
+                </h3>
+                <small style="color: var(--text-light); font-size: 0.85rem;">Status operacional e conectividade dos pontos de captura Wi-Fi</small>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.82rem; color: var(--text-light); display: flex; align-items: center; gap: 6px; background: var(--card-bg); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border);">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
+                    Verificação periódica ativa
+                </span>
+            </div>
+        </div>
+
+        <!-- Mini-KPIs / Sumário de Saúde das Antenas -->
+        <div class="ant-stat-summary">
+            <div class="ant-stat-box">
+                <div class="ant-stat-icon" style="background: rgba(37,99,235,0.1); color: var(--primary);">📡</div>
+                <div>
+                    <div class="ant-stat-val" id="stat-ant-total">0</div>
+                    <div class="ant-stat-lbl">Antenas Monitoradas</div>
+                </div>
+            </div>
+            <div class="ant-stat-box">
+                <div class="ant-stat-icon" style="background: rgba(16,185,129,0.1); color: var(--success);">🟢</div>
+                <div>
+                    <div class="ant-stat-val" id="stat-ant-online" style="color: var(--success);">0</div>
+                    <div class="ant-stat-lbl">Operacionais</div>
+                </div>
+            </div>
+            <div class="ant-stat-box">
+                <div class="ant-stat-icon" style="background: rgba(239,68,68,0.1); color: var(--danger);">🚨</div>
+                <div>
+                    <div class="ant-stat-val" id="stat-ant-offline" style="color: var(--danger);">0</div>
+                    <div class="ant-stat-lbl">Com Falha</div>
+                </div>
+            </div>
+            <div class="ant-stat-box">
+                <div class="ant-stat-icon" style="background: rgba(139,92,246,0.1); color: #8b5cf6;">📋</div>
+                <div>
+                    <div class="ant-stat-val" id="stat-ant-events">0</div>
+                    <div class="ant-stat-lbl">Eventos Registrados</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cards das Antenas -->
+        <div class="antenna-grid" id="antenas-cards-container"></div>
+
+        <!-- Painel Retrátil Moderno do Histórico -->
+        <div class="hist-card" id="hist-card-wrapper">
+            <div class="hist-header-bar" id="hist-toggle-bar" onclick="toggleHistoricoAntenas()">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37,99,235,0.08); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        📋
+                    </div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 1.05rem; color: var(--text);">
+                            Histórico de Alterações de Status das Antenas
+                        </div>
+                        <div style="font-size: 0.82rem; color: var(--text-light); margin-top: 2px;">
+                            Registro detalhado de conexões, quedas e inicializações · Clique para expandir / recolher
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="hist-count-badge" style="font-size: 0.82rem; font-weight: 700; background: rgba(37,99,235,0.1); color: var(--primary); padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(37,99,235,0.2);">
+                        0 eventos
+                    </span>
+                    <span id="hist-toggle-icon" style="font-size: 1.1rem; color: var(--text-light); transition: transform 0.3s; display: inline-block;">
+                        ▼
+                    </span>
+                </div>
+            </div>
+
+            <div id="historico-antenas-panel" style="display: none;">
+                <!-- Filtros Rápidos do Histórico -->
+                <div class="hist-filters-bar">
+                    <span style="font-size: 0.78rem; color: var(--text-light); font-weight: 700; text-transform: uppercase;">Filtrar Eventos:</span>
+                    <button type="button" class="hist-filter-chip active" onclick="filtrarHistoricoAntenas('todos', this)">Todos (<span id="count-chip-todos">0</span>)</button>
+                    <button type="button" class="hist-filter-chip" onclick="filtrarHistoricoAntenas('quedas', this)">🚨 Quedas (<span id="count-chip-quedas">0</span>)</button>
+                    <button type="button" class="hist-filter-chip" onclick="filtrarHistoricoAntenas('recup', this)">🟢 Operacionais (<span id="count-chip-recup">0</span>)</button>
+                    <button type="button" class="hist-filter-chip" onclick="filtrarHistoricoAntenas('init', this)">⚡ Inicializações (<span id="count-chip-init">0</span>)</button>
+                </div>
+
+                <div class="table-container" style="margin-top: 0; border: none; border-radius: 0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 170px;">Data / Hora</th>
+                                <th>Antena</th>
+                                <th>Endereço IP</th>
+                                <th>Status Anterior</th>
+                                <th>Novo Status</th>
+                                <th>Diagnóstico / Detalhes da Conexão</th>
+                            </tr>
+                        </thead>
+                        <tbody id="list-antenas-historico"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -209,6 +655,17 @@
     const COMMS_50 = JSON.parse(atob("eyIxMDMwMDEiOiBbeyJkYXRhIjogIjEwLzExLzIwMjYgMTE6NTY6MzgiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwNToyNToyMSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA0OjU1OjAyIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDQ6MjQ6NDEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwMzo1NDoyMSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDAzOjI0OjAxIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDI6NTM6NDIiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwMjoyMzoyMSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDAxOjUzOjAxIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDE6MjI6NDEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwMDo1MjowOCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDAwOjIyOjEyIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMjM6NTA6NTEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAxNzo1MToyNCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDEyOjMyOjIyIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMTI6MDI6MjQiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAwNTozOTowMCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDA1OjA4OjI0IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMDQ6Mzg6MzEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAwNDowODozNyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDAzOjM3OjUzIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMDM6MDc6NTkiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAwMjozNzoyOCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDAyOjA3OjM0IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMDE6Mzc6MDIiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAwMTowNzowNyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDAwOjM1OjA4IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMDA6MDU6MDEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAyMzozNDo1NCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDIzOjA0OjIyIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMjI6MzM6NTAiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAyMjowMzoxMSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDIxOjM0OjQzIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMjE6MDM6MjMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAyMDozNDoxNiIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDIwOjAyOjU2IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMTk6MzM6MDEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAxOTowMjo1NCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDE4OjMwOjM3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMTg6MDA6MzUiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAxMTozMToxOCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDExOjAxOjU3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMTA6MzI6MTMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAxMDowMDo1MSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDA5OjMwOjU3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMDk6MDA6MjMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAwODoyOTo1MSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDA3OjU5OjU2IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMDc6MzA6MDIiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAwNjo1OToyOSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH1dLCAiMTAzMDAyIjogW3siZGF0YSI6ICIxMC8xMS8yMDI2IDExOjU4OjUxIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMTE6Mjk6NDMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAxMDo1NzozNCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDEwOjI2OjAzIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6NTU6NTQiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6IG51bGx9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTo0OTo0NSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogbnVsbH0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjQ2OjM1IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiBudWxsfSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6NDU6MTUiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjQ0OjUwIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTo0Mzo0OCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6NDI6NDYiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjQxOjQyIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTo0MDo0MCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6Mzk6MzgiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjM4OjM3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTozNzozNCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MzY6MzIiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjM1OjMwIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTozNDoyOCIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MzM6MjciLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjMyOjI1IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTozMToyMyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MzA6MjEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjI5OjE0IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToyODoxMiIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6Mjc6MTAiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjI2OjA4IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToyNDo0NyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MjM6NDUiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjIyOjQzIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToyMTo0MSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MjA6MzkiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjE5OjM3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToxODozNSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MTc6MzMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjE2OjMxIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToxNToyOSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MTQ6MjciLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjEzOjI2IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOToxMjoyMyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MTE6MjEiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjEwOjE4IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTowOToxNyIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MDg6MTUiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjA3OjEzIiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTowNjoxMSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MDU6MDkiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In0sIHsiZGF0YSI6ICIxMC8xMS8yMDI2IDA5OjA0OjA3IiwgImFwbCI6ICI5MS4xNiIsICJlb2QiOiAiMjUwIiwgImVycm8iOiAiMTA0OSJ9LCB7ImRhdGEiOiAiMTAvMTEvMjAyNiAwOTowMzowNSIsICJhcGwiOiAiOTEuMTYiLCAiZW9kIjogIjI1MCIsICJlcnJvIjogIjEwNDkifSwgeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6MDI6MDMiLCAiYXBsIjogIjkxLjE2IiwgImVvZCI6ICIyNTAiLCAiZXJybyI6ICIxMDQ5In1dfQ=="));
     const TGS_30 = JSON.parse(atob("eyIxMDMwMDEiOiBbeyJkYXRhIjogIjEwLzExLzIwMjYgMTE6NTY6MDAiLCAic2VxIjogIjI1MzgifSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMjM6NTE6MDAiLCAic2VxIjogIjI1MzcifSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMTc6NTA6MDAiLCAic2VxIjogIjI1MzYifSwgeyJkYXRhIjogIjA5LzExLzIwMjYgMTI6MDI6MDAiLCAic2VxIjogIjI1MzUifSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMTg6MDA6MDAiLCAic2VxIjogIjI1MzQifSwgeyJkYXRhIjogIjA3LzExLzIwMjYgMjM6NTQ6MDAiLCAic2VxIjogIjI1MzMifSwgeyJkYXRhIjogIjA3LzExLzIwMjYgMTI6MDI6MDAiLCAic2VxIjogIjI1MzIifSwgeyJkYXRhIjogIjA2LzExLzIwMjYgMjA6MDQ6MDAiLCAic2VxIjogIjI1MzEifSwgeyJkYXRhIjogIjA2LzExLzIwMjYgMTg6MDM6MDAiLCAic2VxIjogIjI1MzAifSwgeyJkYXRhIjogIjA1LzExLzIwMjYgMjM6NDk6MDAiLCAic2VxIjogIjI1MjkifSwgeyJkYXRhIjogIjA1LzExLzIwMjYgMTc6NTg6MDAiLCAic2VxIjogIjI1MjgifSwgeyJkYXRhIjogIjA1LzExLzIwMjYgMTE6NTA6MDAiLCAic2VxIjogIjI1MjcifSwgeyJkYXRhIjogIjA0LzExLzIwMjYgMjA6MjA6MDAiLCAic2VxIjogIjI1MjYifSwgeyJkYXRhIjogIjA0LzExLzIwMjYgMTg6MTE6MDAiLCAic2VxIjogIjI1MjUifSwgeyJkYXRhIjogIjA0LzExLzIwMjYgMDc6NTM6MDAiLCAic2VxIjogIjI1MjQifSwgeyJkYXRhIjogIjA0LzExLzIwMjYgMDY6MTY6MDAiLCAic2VxIjogIjI1MjMifSwgeyJkYXRhIjogIjAzLzExLzIwMjYgMjM6NDk6MDAiLCAic2VxIjogIjI1MjIifSwgeyJkYXRhIjogIjAzLzExLzIwMjYgMTc6MzM6MDAiLCAic2VxIjogIjI1MjEifSwgeyJkYXRhIjogIjAzLzExLzIwMjYgMTE6NTI6MDAiLCAic2VxIjogIjI1MjAifSwgeyJkYXRhIjogIjAyLzExLzIwMjYgMjM6NTE6MDAiLCAic2VxIjogIjI1MTkifSwgeyJkYXRhIjogIjAyLzExLzIwMjYgMTc6NDk6MDAiLCAic2VxIjogIjI1MTgifSwgeyJkYXRhIjogIjAyLzExLzIwMjYgMTE6NTE6MDAiLCAic2VxIjogIjI1MTcifSwgeyJkYXRhIjogIjAyLzExLzIwMjYgMDk6NTA6MDAiLCAic2VxIjogIjI1MTYifSwgeyJkYXRhIjogIjAxLzExLzIwMjYgMjM6NDk6MDAiLCAic2VxIjogIjI1MTUifSwgeyJkYXRhIjogIjAxLzExLzIwMjYgMTc6NTk6MDAiLCAic2VxIjogIjI1MTQifSwgeyJkYXRhIjogIjMxLzEwLzIwMjYgMjM6NTM6MDAiLCAic2VxIjogIjI1MTMifSwgeyJkYXRhIjogIjMxLzEwLzIwMjYgMTc6NTA6MDAiLCAic2VxIjogIjI1MTIifSwgeyJkYXRhIjogIjMwLzEwLzIwMjYgMjM6NTM6MDAiLCAic2VxIjogIjI1MTEifSwgeyJkYXRhIjogIjMwLzEwLzIwMjYgMTc6NDk6MDAiLCAic2VxIjogIjI1MTAifSwgeyJkYXRhIjogIjMwLzEwLzIwMjYgMTI6MDA6MDAiLCAic2VxIjogIjI1MDkifV0sICIxMDMwMDIiOiBbeyJkYXRhIjogIjEwLzExLzIwMjYgMDk6NTY6MDAiLCAic2VxIjogIjI5In0sIHsiZGF0YSI6ICIwOS8xMS8yMDI2IDE5OjM4OjAwIiwgInNlcSI6ICIyOCJ9LCB7ImRhdGEiOiAiMDkvMTEvMjAyNiAxOTozODowMCIsICJzZXEiOiAiMjcifSwgeyJkYXRhIjogIjA4LzExLzIwMjYgMjM6NDk6MDAiLCAic2VxIjogIjI2In0sIHsiZGF0YSI6ICIwOC8xMS8yMDI2IDExOjU3OjAwIiwgInNlcSI6ICIyNSJ9LCB7ImRhdGEiOiAiMDgvMTEvMjAyNiAwNTo1MTowMCIsICJzZXEiOiAiMjQifSwgeyJkYXRhIjogIjA2LzExLzIwMjYgMjM6NTE6MDAiLCAic2VxIjogIjIzIn0sIHsiZGF0YSI6ICIwNi8xMS8yMDI2IDE4OjAxOjAwIiwgInNlcSI6ICIyMiJ9LCB7ImRhdGEiOiAiMDYvMTEvMjAyNiAxMjowNDowMCIsICJzZXEiOiAiMjEifSwgeyJkYXRhIjogIjA1LzExLzIwMjYgMTk6NTk6MDAiLCAic2VxIjogIjIwIn0sIHsiZGF0YSI6ICIwNS8xMS8yMDI2IDE4OjAzOjAwIiwgInNlcSI6ICIxOSJ9LCB7ImRhdGEiOiAiMDQvMTEvMjAyNiAyMzo0OTowMCIsICJzZXEiOiAiMTgifSwgeyJkYXRhIjogIjA0LzExLzIwMjYgMTg6MDc6MDAiLCAic2VxIjogIjE3In0sIHsiZGF0YSI6ICIwNC8xMS8yMDI2IDExOjU1OjAwIiwgInNlcSI6ICIxNiJ9LCB7ImRhdGEiOiAiMDMvMTEvMjAyNiAyMTowNDowMCIsICJzZXEiOiAiMTUifSwgeyJkYXRhIjogIjAzLzExLzIwMjYgMTc6NDY6MDAiLCAic2VxIjogIjE0In0sIHsiZGF0YSI6ICIwMy8xMS8yMDI2IDExOjEzOjAwIiwgInNlcSI6ICIxMyJ9LCB7ImRhdGEiOiAiMDMvMTEvMjAyNiAxMTowOTowMCIsICJzZXEiOiAiMjQ0OSJ9LCB7ImRhdGEiOiAiMDIvMTEvMjAyNiAwODo0MzowMCIsICJzZXEiOiAiMjQ0OCJ9LCB7ImRhdGEiOiAiMDEvMTEvMjAyNiAxODoyODowMCIsICJzZXEiOiAiMjQ0NyJ9LCB7ImRhdGEiOiAiMDEvMTEvMjAyNiAxMTo1MzowMCIsICJzZXEiOiAiMjQ0NiJ9LCB7ImRhdGEiOiAiMDEvMTEvMjAyNiAwNjowMjowMCIsICJzZXEiOiAiMjQ0NSJ9LCB7ImRhdGEiOiAiMzEvMTAvMjAyNiAyMzo1MzowMCIsICJzZXEiOiAiMjQ0NCJ9LCB7ImRhdGEiOiAiMzEvMTAvMjAyNiAxMTo0OTowMCIsICJzZXEiOiAiMjQ0MyJ9LCB7ImRhdGEiOiAiMzAvMTAvMjAyNiAxNzo1NzowMCIsICJzZXEiOiAiMjQ0MiJ9LCB7ImRhdGEiOiAiMjkvMTAvMjAyNiAyMTo1NTowMCIsICJzZXEiOiAiMjQ0MSJ9LCB7ImRhdGEiOiAiMjkvMTAvMjAyNiAxMToyMjowMCIsICJzZXEiOiAiMjQ0MCJ9LCB7ImRhdGEiOiAiMjgvMTAvMjAyNiAyMzo1NzowMCIsICJzZXEiOiAiMjQzOSJ9LCB7ImRhdGEiOiAiMjgvMTAvMjAyNiAxNzo1OTowMCIsICJzZXEiOiAiMjQzOCJ9LCB7ImRhdGEiOiAiMjgvMTAvMjAyNiAxNzo0OTowMCIsICJzZXEiOiAiMjQzNyJ9XX0="));
     
+    // Configurações Supabase para Tempo Real
+    const SUPABASE_URL = "https://oiszcvmxteebrbtgcily.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_qehYrlZWWZpMv7Su6nvapA_25GNRxJs";
+    const NOME_GARAGEM = "TPG";
+    const GARAGEM_ID = "13e651bf-615e-4e8f-b058-92703c28a3c7";
+
+    // Antenas: Status Atual e Histórico de Alterações
+    let ANTENAS = JSON.parse(atob("W3sibm9tZSI6ICJhbnRlbmExIiwgImlwIjogIjE3Mi41NC4xMDMuMTAxIiwgInN0YXR1cyI6ICJvbmxpbmUiLCAidWx0aW1vX3BpbmciOiAiMTAvMTEvMjAyNiAxNTowMDozMCIsICJ1bHRpbWFfYWx0ZXJhY2FvIjogIjEwLzExLzIwMjYgMTQ6NDg6NTgiLCAiZGV0YWxoZXMiOiAiSFRUUCAyMDAgT0sifV0="));
+    let ANTENAS_HISTORICO = JSON.parse(atob("W3siZGF0YV9ob3JhIjogIjEwLzExLzIwMjYgMTQ6NDg6NTgiLCAibm9tZSI6ICJhbnRlbmExIiwgImlwIjogIjE3Mi41NC4xMDMuMTAxIiwgInN0YXR1c19hbnRlcmlvciI6ICJvZmZsaW5lIiwgIm5vdm9fc3RhdHVzIjogIm9ubGluZSIsICJkZXRhbGhlcyI6ICJIVFRQIDIwMCBPSyJ9LCB7ImRhdGFfaG9yYSI6ICIxMC8xMS8yMDI2IDE0OjQ3OjMyIiwgIm5vbWUiOiAiYW50ZW5hMSIsICJpcCI6ICIxNzIuNTQuMTAzLjEwMSIsICJzdGF0dXNfYW50ZXJpb3IiOiAib25saW5lIiwgIm5vdm9fc3RhdHVzIjogIm9mZmxpbmUiLCAiZGV0YWxoZXMiOiAiSW5hY2Vzc1x1MDBlZHZlbDogSFRUUENvbm5lY3Rpb25Qb29sKGhvc3Q9JzE3Mi41NC4xMDMuMTAxJywgcG9ydD04MCk6IFJlYWQgdGltZWQgb3V0LiAocmVhZCB0aW1lb3UifSwgeyJkYXRhX2hvcmEiOiAiMTAvMTEvMjAyNiAxNDozNjoyMyIsICJub21lIjogImFudGVuYTEiLCAiaXAiOiAiMTcyLjU0LjEwMy4xMDEiLCAic3RhdHVzX2FudGVyaW9yIjogInZlcmlmaWNhbmRvIiwgIm5vdm9fc3RhdHVzIjogIm9ubGluZSIsICJkZXRhbGhlcyI6ICJIVFRQIDIwMCBPSyJ9XQ=="));
+    let offlineAlerts = new Set();
+    
     const datePicker = document.getElementById('datePicker');
     const searchInput = document.getElementById('globalSearch');
     const metaFilter = document.getElementById('metaFilter');
@@ -221,11 +678,203 @@
         document.getElementById('refresh-bar').style.width = ((300 - timeLeft) / 300 * 100) + '%';
     }, 1000);
 
+    function tocarAlertaSonoro() {
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const audioCtx = new AudioCtx();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(360, audioCtx.currentTime + 0.35);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.35);
+        } catch(e) {
+            console.log("Áudio indisponível:", e);
+        }
+    }
+
+    function showToast(title, msg, type = "danger") {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${type === 'success' ? 'toast-success' : ''}`;
+        toast.innerHTML = `
+            <div style="font-size:1.4rem;">${type === 'success' ? '✅' : '🚨'}</div>
+            <div style="flex:1;">
+                <div class="toast-title">${escapeHtml(title)}</div>
+                <div class="toast-msg">${escapeHtml(msg)}</div>
+            </div>
+            <span style="cursor:pointer; color:var(--text-light); font-weight:bold; font-size:1.1rem;" onclick="this.parentElement.remove()">✕</span>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => toast.remove(), 350);
+        }, 8000);
+    }
+
+    function atualizarBannerAlerta() {
+        const banner = document.getElementById('antenna-alert-banner');
+        const desc = document.getElementById('alert-antenna-desc');
+        if (!banner || !desc) return;
+        if (offlineAlerts.size > 0) {
+            desc.innerHTML = `Atenção: <strong>${Array.from(offlineAlerts).join(', ')}</strong> parou de responder! Verifique fonte de alimentação e rede.`;
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    function fecharAlertaAntena() {
+        const banner = document.getElementById('antenna-alert-banner');
+        if (banner) banner.classList.add('hidden');
+    }
+
+    function tratarMudancaAntenaRealtime(novoReg) {
+        if (!novoReg || !novoReg.ip) return;
+
+        // 1. ISOLAMENTO POR GARAGEM: Se o evento contiver garagem_id diferente, ignora sumariamente!
+        if (GARAGEM_ID && novoReg.garagem_id && String(novoReg.garagem_id) !== String(GARAGEM_ID)) {
+            console.log(`[Isolamento] Ignorado: evento da garagem_id ${novoReg.garagem_id} (painel atual é ${GARAGEM_ID})`);
+            return;
+        }
+
+        const ip = (novoReg.ip || '').trim();
+
+        // 2. ISOLAMENTO POR WHITELIST DE IPS:
+        // Processa APENAS se o IP pertencer às antenas configuradas para ESTA garagem!
+        // Jamais inclui antenas de outros servidores/garagens no painel.
+        const antExistente = ANTENAS.find(a => (a.ip || '').trim() === ip);
+        if (!antExistente) {
+            console.log(`[Isolamento] Ignorado: IP ${ip} não pertence à garagem ${NOME_GARAGEM}`);
+            return;
+        }
+
+        const nome = antExistente.nome || novoReg.nome || ip;
+        const status = (novoReg.status || '').toLowerCase();
+        const agoraHora = novoReg.ultimo_ping ? new Date(novoReg.ultimo_ping).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+        const statusAnterior = (antExistente.status || '').toLowerCase();
+        antExistente.status = status;
+        antExistente.ultimo_ping = agoraHora;
+        antExistente.detalhes = novoReg.detalhes || '';
+        if (novoReg.ultima_alteracao) {
+            try { antExistente.ultima_alteracao = new Date(novoReg.ultima_alteracao).toLocaleString(); } catch(e){}
+        }
+
+        if (status === 'offline' && statusAnterior !== 'offline') {
+            offlineAlerts.add(`${nome} (${ip})`);
+            atualizarBannerAlerta();
+            tocarAlertaSonoro();
+            showToast('QUEDA DE ANTENA!', `A antena ${nome} (${ip}) está OFFLINE!`, 'danger');
+            adicionarLinhaHistoricoRealtime(nome, ip, statusAnterior, 'offline', novoReg.detalhes);
+        } else if (status === 'online' && statusAnterior === 'offline') {
+            offlineAlerts.delete(`${nome} (${ip})`);
+            atualizarBannerAlerta();
+            showToast('ANTENA RESTABELECIDA', `A antena ${nome} (${ip}) voltou a ficar ONLINE!`, 'success');
+            adicionarLinhaHistoricoRealtime(nome, ip, statusAnterior, 'online', 'Conexão restabelecida');
+        }
+
+        renderAntenasCards();
+    }
+
+    function adicionarLinhaHistoricoRealtime(nome, ip, stAnt, stNovo, detalhes) {
+        const listAntHist = document.getElementById('list-antenas-historico');
+        if (!listAntHist) return;
+        const badgeNovo = stNovo === 'online' ? 'badge-online' : 'badge-error';
+        const badgeAnt = stAnt === 'online' ? 'badge-online' : (stAnt === 'offline' ? 'badge-error' : 'badge-offline');
+        const horaStr = new Date().toLocaleString();
+        
+        const stAntObj = formatarStatusAmigavel(stAnt);
+        const stNovoObj = formatarStatusAmigavel(stNovo);
+        const isOffline = stNovo === 'offline';
+        const diagAmigavel = formatarDiagnosticoAmigavel(detalhes, !isOffline);
+        const eventType = isOffline ? 'quedas' : 'operacional';
+
+        const rowHtml = `
+            <tr data-type="${eventType}" style="animation: fadeIn 0.5s ease; background: ${isOffline ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'};">
+                <td>
+                    <div style="font-weight: 700; color: var(--text);">${horaStr.split(' ')[1] || horaStr} <span style="font-size:0.75rem; color:var(--primary); font-weight:700;">⚡ Realtime</span></div>
+                    <div style="font-size: 0.78rem; color: var(--text-light);">${horaStr.split(' ')[0] || ''}</div>
+                </td>
+                <td><span style="font-weight: 600;">📡 ${escapeHtml(nome)}</span></td>
+                <td><code class="ant-ip-pill" style="font-size:0.75rem; padding: 2px 8px;">${escapeHtml(ip)}</code></td>
+                <td><span class="badge ${stAntObj.badgeCls}">${stAntObj.icon} ${stAntObj.label}</span></td>
+                <td><span class="badge ${stNovoObj.badgeCls}">${stNovoObj.icon} ${stNovoObj.label}</span></td>
+                <td><span style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(diagAmigavel)}</span></td>
+            </tr>
+        `;
+        listAntHist.insertAdjacentHTML('afterbegin', rowHtml);
+        atualizarContadorHistorico();
+    }
+
+    function initRealtimeSupabase() {
+        const pill = document.getElementById('realtime-status-pill');
+        if (!window.supabase || !SUPABASE_URL || !SUPABASE_KEY || !SUPABASE_URL.startsWith('http')) {
+            if (pill) {
+                pill.className = "realtime-badge disconnected";
+                pill.innerHTML = "⚪ Modo Estático (GitHub)";
+            }
+            return;
+        }
+
+        try {
+            const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            const channelName = `realtime-antenas-${(NOME_GARAGEM || 'garagem').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+            
+            const changeOptions = {
+                event: '*',
+                schema: 'public',
+                table: 'status_antenas'
+            };
+            if (GARAGEM_ID && GARAGEM_ID.length > 10) {
+                changeOptions.filter = `garagem_id=eq.${GARAGEM_ID}`;
+            }
+
+            const channel = sb.channel(channelName)
+                .on('postgres_changes', changeOptions, (payload) => {
+                    console.log('⚡ [Realtime Supabase] Alteração de antena recebida:', payload);
+                    if (payload.new) {
+                        tratarMudancaAntenaRealtime(payload.new);
+                    }
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        if (pill) {
+                            pill.className = "realtime-badge";
+                            pill.innerHTML = `🟢 Realtime (${escapeHtml(NOME_GARAGEM)})`;
+                        }
+                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                        if (pill) {
+                            pill.className = "realtime-badge disconnected";
+                            pill.innerHTML = "🟡 Reconectando Realtime...";
+                        }
+                    }
+                });
+        } catch(err) {
+            console.error("Falha ao inicializar Supabase Realtime:", err);
+            if (pill) {
+                pill.className = "realtime-badge disconnected";
+                pill.innerHTML = "⚪ Supabase Indisponível";
+            }
+        }
+    }
+
     function init() {
         datePicker.addEventListener('change', renderDashboard);
+        const datePickerFim = document.getElementById('datePickerFim');
+        if (datePickerFim) datePickerFim.addEventListener('change', renderDashboard);
         searchInput.addEventListener('keyup', applyFilters);
         metaFilter.addEventListener('change', applyFilters);
         renderDashboard();
+        initRealtimeSupabase();
     }
 
     function toggleTheme() {
@@ -237,9 +886,12 @@
     function switchTab(id) {
         document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
         document.querySelectorAll('.tabs-nav .tab-item').forEach(e => e.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        const index = id === 'tab-online' ? 0 : id === 'tab-critical' ? 1 : 2;
-        document.querySelectorAll('.tabs-nav .tab-item')[index].classList.add('active');
+        const targetView = document.getElementById(id);
+        if (targetView) targetView.classList.add('active');
+        const tabList = ['tab-online', 'tab-critical', 'tab-offline', 'tab-antenas'];
+        const idx = tabList.indexOf(id);
+        const tabs = document.querySelectorAll('.tabs-nav .tab-item');
+        if (idx >= 0 && tabs[idx]) tabs[idx].classList.add('active');
     }
 
     function switchModalTab(id, el) {
@@ -251,6 +903,183 @@
 
     let lastCounts = { online: 0, offline: 0, critical: 0, total: 0 };
 
+    // ===== FORMATADORES AMIGÁVEIS DE ANTENA =====
+    function formatarStatusAmigavel(st) {
+        const s = (st || '').toLowerCase().trim();
+        if (s === 'online' || s === 'ativo') {
+            return { label: 'Operacional', cls: 'online', badgeCls: 'badge-online', icon: '●' };
+        }
+        if (s === 'offline' || s === 'inativo') {
+            return { label: 'Inacessível', cls: 'offline', badgeCls: 'badge-error', icon: '▲' };
+        }
+        if (s === 'verificando') {
+            return { label: 'Inicialização', cls: 'verificando', badgeCls: 'badge-init', icon: '⚡' };
+        }
+        return { label: (st || 'Desconhecido').toUpperCase(), cls: 'desconhecido', badgeCls: 'badge-offline', icon: '•' };
+    }
+
+    function formatarDiagnosticoAmigavel(detalhes, isOnline) {
+        if (!detalhes || detalhes === '-' || detalhes === 'None') {
+            return isOnline ? 'Sinal estável e respondendo normalmente' : 'Sem resposta no teste de conectividade';
+        }
+        const d = String(detalhes).trim();
+        if (d === 'HTTP 200 OK' || d.includes('200 OK')) {
+            return 'Sinal Estável · Resposta Normal (HTTP 200)';
+        }
+        if (d.includes('Conexão restabelecida')) {
+            return 'Conexão restabelecida com sucesso';
+        }
+        if (d.toLowerCase().includes('timeout') || d.toLowerCase().includes('timed out')) {
+            return 'Tempo limite excedido · Antena não respondeu na rede local';
+        }
+        if (d.toLowerCase().includes('connection refused') || d.toLowerCase().includes('recusada')) {
+            return 'Conexão recusada · Dispositivo ativo mas porta fechada';
+        }
+        if (d.toLowerCase().includes('unreachable') || d.toLowerCase().includes('inalcançável')) {
+            return 'Host inalcançável · Verifique cabo de rede e alimentação PoE';
+        }
+        if (d.startsWith('Inacessível:')) {
+            return 'Inacessível na rede local · Sem resposta ao ping/HTTP';
+        }
+        return d;
+    }
+
+    async function pingManual(ip, btn) {
+        if (!ip) return;
+        const safeIpId = ip.split('.').join('-');
+        const resultEl = document.getElementById('ping-' + safeIpId);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Testando...';
+        }
+        if (resultEl) {
+            resultEl.className = 'ping-result';
+            resultEl.textContent = '';
+        }
+
+        try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 3500);
+            const t0 = Date.now();
+            await fetch(`http://${ip}`, { mode: 'no-cors', signal: controller.signal });
+            clearTimeout(tid);
+            const rtt = Date.now() - t0;
+            if (resultEl) {
+                resultEl.className = 'ping-result ping-ok';
+                resultEl.textContent = `✔ Resposta em ${rtt}ms`;
+            }
+        } catch(e) {
+            if (e.name === 'AbortError') {
+                if (resultEl) {
+                    resultEl.className = 'ping-result ping-fail';
+                    resultEl.textContent = '✖ Sem resposta (Timeout)';
+                }
+            } else {
+                if (resultEl) {
+                    resultEl.className = 'ping-result ping-ok';
+                    resultEl.textContent = '✔ Host Alcançável';
+                }
+            }
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '🏓 Testar Conexão';
+            }
+        }
+    }
+
+    function renderAntenasCards() {
+        let antOnline = 0;
+        let antOffline = 0;
+        offlineAlerts.clear();
+        const antCards = document.getElementById('antenas-cards-container');
+        if (antCards) {
+            antCards.innerHTML = '';
+            if (ANTENAS && ANTENAS.length > 0) {
+                ANTENAS.forEach(ant => {
+                    const isOnline = (ant.status || '').toLowerCase() === 'online';
+                    const isOffline = (ant.status || '').toLowerCase() === 'offline';
+                    if (isOnline) antOnline++;
+                    if (isOffline) {
+                        antOffline++;
+                        offlineAlerts.add(`${ant.nome || 'Antena'} (${ant.ip})`);
+                    }
+
+                    const stObj = formatarStatusAmigavel(ant.status);
+                    const diagAmigavel = formatarDiagnosticoAmigavel(ant.detalhes, isOnline);
+                    const safeIpId = (ant.ip || 'x').split('.').join('-');
+                    const cardClass = isOnline ? 'status-online' : (isOffline ? 'status-offline' : 'status-desconhecido');
+
+                    antCards.insertAdjacentHTML('beforeend', `
+                        <div class="ant-card ${cardClass}" id="card-antena-${safeIpId}">
+                            <div class="ant-card-top">
+                                <div class="ant-title-group">
+                                    <span class="ant-name">📡 ${escapeHtml(ant.nome || 'Antena')}</span>
+                                    <div class="ant-ip-pill">🌐 ${escapeHtml(ant.ip)}</div>
+                                </div>
+                                <div class="ant-status-badge ${stObj.cls}">
+                                    <span class="pulse-dot ${stObj.cls}"></span>
+                                    ${stObj.label}
+                                </div>
+                            </div>
+
+                            <div class="ant-diag-banner ${isOffline ? 'offline' : ''}">
+                                <span>${isOnline ? '🟢' : '🚨'}</span>
+                                <span style="flex: 1;">${escapeHtml(diagAmigavel)}</span>
+                            </div>
+
+                            <div class="ant-info-grid">
+                                <div class="ant-info-cell">
+                                    <span class="ant-info-label">Última Checagem</span>
+                                    <span class="ant-info-value">🕒 ${escapeHtml(ant.ultimo_ping || '-')}</span>
+                                </div>
+                                <div class="ant-info-cell">
+                                    <span class="ant-info-label">Status Desde</span>
+                                    <span class="ant-info-value">🔄 ${escapeHtml(ant.ultima_alteracao || '-')}</span>
+                                </div>
+                                <div class="ant-info-cell">
+                                    <span class="ant-info-label">Protocolo</span>
+                                    <span class="ant-info-value">⚡ HTTP Porta 80</span>
+                                </div>
+                            </div>
+
+                            <div class="ant-actions">
+                                <button type="button" class="btn-test-ping" onclick="pingManual('${escapeHtml(ant.ip)}', this)">
+                                    🏓 Testar Conexão
+                                </button>
+                                <span class="ping-result" id="ping-${safeIpId}"></span>
+                            </div>
+                        </div>
+                    `);
+                });
+            } else {
+                antCards.innerHTML = '<div style="color:var(--text-light); padding:20px; background:var(--card-bg); border-radius:12px; border:1px solid var(--border);">Nenhuma antena configurada na seção [Antennas].</div>';
+            }
+        }
+        
+        // Atualiza mini estatísticas
+        const totalAnt = (ANTENAS || []).length;
+        const elTotal = document.getElementById('stat-ant-total');
+        const elOnline = document.getElementById('stat-ant-online');
+        const elOffline = document.getElementById('stat-ant-offline');
+        if (elTotal) elTotal.innerText = totalAnt;
+        if (elOnline) elOnline.innerText = antOnline;
+        if (elOffline) elOffline.innerText = antOffline;
+
+        // Atualiza KPI no topo do painel
+        const kpiAntenas = document.getElementById('kpi-antenas');
+        if (kpiAntenas) {
+            kpiAntenas.innerText = `${antOnline}/${totalAnt}`;
+            const kpiAntSub = document.getElementById('kpi-antenas-sub');
+            if (kpiAntSub) {
+                kpiAntSub.innerText = (antOnline === totalAnt && totalAnt > 0) ? "Todas Operacionais" : `${totalAnt - antOnline} com falha`;
+                kpiAntSub.style.color = (antOnline === totalAnt && totalAnt > 0) ? "var(--success)" : "var(--danger)";
+            }
+        }
+
+        atualizarBannerAlerta();
+    }
+
     function renderDashboard() {
         const selectedDateStr = datePicker.value;
         const lists = { online: document.getElementById('list-online'), offline: document.getElementById('list-offline'), critical: document.getElementById('list-critical') };
@@ -258,7 +1087,11 @@
 
         let counts = { online: 0, offline: 0, critical: 0, total: 0 };
         const selParts = selectedDateStr.split('-');
-        const dateEndObj = new Date(parseInt(selParts[0]), parseInt(selParts[1])-1, parseInt(selParts[2]), 23, 59, 59);
+        const datePickerFimEl = document.getElementById('datePickerFim');
+        let endDateStr = (datePickerFimEl && datePickerFimEl.value) ? datePickerFimEl.value : selectedDateStr;
+        if (endDateStr < selectedDateStr) endDateStr = selectedDateStr;
+        const endParts = endDateStr.split('-');
+        const dateEndObj = new Date(parseInt(endParts[0]), parseInt(endParts[1])-1, parseInt(endParts[2]), 23, 59, 59);
         const dateStartObj = new Date(parseInt(selParts[0]), parseInt(selParts[1])-1, parseInt(selParts[2]), 0, 0, 0);
 
         // Ordena veículos por número
@@ -275,15 +1108,17 @@
 
             const meta = METADATA[veiculo] || {};
             const ipStr = IPS[veiculo] || 'N/A';
-            const eodVal = parseFloat(meta.eod) || 0;
-            const isOutdated = eodVal < 239.0;
+            const eodRaw = parseFloat(meta.eod);
+            const eodVal = isNaN(eodRaw) ? 0 : eodRaw;
+            // isOutdated: only true when we have a real EOD value that is below 239
+            const isOutdated = (!isNaN(eodRaw) && eodVal > 0 && eodVal < 239.0);
             
             const searchData = `${veiculo} ${meta.versao} ${meta.eod} ${ipStr} ${lastLog ? lastLog.e : ''}`.toLowerCase();
             const rowAttr = `data-search="${searchData}" data-outdated="${isOutdated}" data-error="${lastLog && lastLog.e ? 'true' : 'false'}"`;
 
             if (!lastLog) {
                 counts.offline++;
-                lists.offline.insertAdjacentHTML('beforeend', `<tr ${rowAttr}><td><strong>${veiculo}</strong></td><td>${ipStr}</td><td><span class="badge badge-offline">SEM DADOS</span></td><td>Nunca</td><td>-</td></tr>`);
+                lists.offline.insertAdjacentHTML('beforeend', `<tr ${rowAttr} class="offline-urgency-high"><td><strong>${veiculo}</strong></td><td>${ipStr}</td><td><span class="badge badge-offline">SEM DADOS</span></td><td>Nunca</td><td><span style="color:#8b5cf6;font-weight:600;">⚠️ Sem registro</span></td></tr>`);
                 return;
             }
 
@@ -308,9 +1143,28 @@
                 }
             } else {
                 counts.offline++;
-                const diffDays = Math.round(Math.abs((dateStartObj - lastDate) / 86400000));
-                lists.offline.insertAdjacentHTML('beforeend', `<tr ${rowAttr} onclick="showDetails('${veiculo}')" style="cursor:pointer">
-                    <td><strong>${veiculo}</strong></td><td>${ipStr}</td><td><span class="badge badge-offline">OFFLINE</span></td><td>${formatDateBr(lastLog.d)}</td><td>${diffDays} dia(s)</td>
+                const diffHours = Math.max(1, Math.round((new Date() - lastDate) / 3600000));
+                let tempoStr = '';
+                let urgColor = '#f59e0b';
+                let urgClass = 'offline-urgency-low';
+                if (diffHours < 24) {
+                    tempoStr = diffHours + 'h';
+                    urgColor = '#f59e0b';
+                    urgClass = 'offline-urgency-low';
+                } else if (diffHours < 72) {
+                    const d = Math.floor(diffHours / 24);
+                    const h = diffHours % 24;
+                    tempoStr = d + 'd ' + h + 'h';
+                    urgColor = '#ef4444';
+                    urgClass = 'offline-urgency-mid';
+                } else {
+                    const d = Math.floor(diffHours / 24);
+                    tempoStr = d + ' dias';
+                    urgColor = '#8b5cf6';
+                    urgClass = 'offline-urgency-high';
+                }
+                lists.offline.insertAdjacentHTML('beforeend', `<tr ${rowAttr} class="${urgClass}" onclick="showDetails('${veiculo}')" style="cursor:pointer">
+                    <td><strong>${veiculo}</strong></td><td>${ipStr}</td><td><span class="badge badge-offline">OFFLINE</span></td><td>${formatDateBr(lastLog.d)}</td><td><span style="color:${urgColor};font-weight:600;">⏱ ${tempoStr}</span></td>
                 </tr>`);
             }
         });
@@ -321,6 +1175,61 @@
         document.getElementById('kpi-critical').innerText = counts.critical;
         const active = counts.online + counts.critical;
         document.getElementById('kpi-rate').innerText = active > 0 ? ((counts.online / active) * 100).toFixed(1) + '%' : '0%';
+
+        renderAntenasCards();
+
+        // Renderiza Histórico de Alterações de Status das Antenas
+        const listAntHist = document.getElementById('list-antenas-historico');
+        if (listAntHist) {
+            listAntHist.innerHTML = '';
+            if (ANTENAS_HISTORICO && ANTENAS_HISTORICO.length > 0) {
+                ANTENAS_HISTORICO.forEach(h => {
+                    const stAntObj = formatarStatusAmigavel(h.status_anterior);
+                    const stNovoObj = formatarStatusAmigavel(h.novo_status);
+                    const isNovoOffline = (h.novo_status || '').toLowerCase() === 'offline';
+                    const diagAmigavel = formatarDiagnosticoAmigavel(h.detalhes, !isNovoOffline);
+                    
+                    // Separa data e hora para apresentação limpa
+                    const rawDt = String(h.data_hora || '');
+                    let dataFormatada = rawDt;
+                    let horaFormatada = '';
+                    if (rawDt.includes(' ')) {
+                        const parts = rawDt.split(' ');
+                        dataFormatada = parts[0];
+                        horaFormatada = parts[1];
+                    }
+
+                    // Determina o tipo de evento para os chips de filtro
+                    let eventType = 'operacional';
+                    if (isNovoOffline) {
+                        eventType = 'quedas';
+                    } else if ((h.status_anterior || '').toLowerCase() === 'verificando') {
+                        eventType = 'init';
+                    }
+
+                    listAntHist.insertAdjacentHTML('beforeend', `
+                        <tr data-type="${eventType}">
+                            <td>
+                                <div style="font-weight: 700; color: var(--text);">${escapeHtml(horaFormatada || dataFormatada)}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-light);">${escapeHtml(horaFormatada ? dataFormatada : '')}</div>
+                            </td>
+                            <td><span style="font-weight: 600;">📡 ${escapeHtml(h.nome)}</span></td>
+                            <td><code class="ant-ip-pill" style="font-size:0.75rem; padding: 2px 8px;">${escapeHtml(h.ip)}</code></td>
+                            <td><span class="badge ${stAntObj.badgeCls}">${stAntObj.icon} ${stAntObj.label}</span></td>
+                            <td><span class="badge ${stNovoObj.badgeCls}">${stNovoObj.icon} ${stNovoObj.label}</span></td>
+                            <td><span style="font-size: 0.85rem; font-weight: 500;">${escapeHtml(diagAmigavel)}</span></td>
+                        </tr>
+                    `);
+                });
+            } else {
+                listAntHist.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:25px;">Nenhuma alteração de status registrada até o momento.</td></tr>';
+            }
+        }
+
+        // Atualiza contadores reais do histórico e estatísticas
+        if (typeof atualizarContadorHistorico === 'function') {
+            atualizarContadorHistorico();
+        }
 
         applyFilters(); 
         renderCharts(selectedDateStr, counts);
@@ -339,6 +1248,74 @@
         document.querySelectorAll('.v-card, tbody tr').forEach(filterItem);
     }
 
+
+    function toggleHistoricoAntenas() {
+        const panel = document.getElementById("historico-antenas-panel");
+        const icon  = document.getElementById("hist-toggle-icon");
+        const wrapper = document.getElementById("hist-card-wrapper");
+        if (!panel) return;
+        const open = panel.style.display !== "none";
+        panel.style.display = open ? "none" : "block";
+        if (icon) icon.style.transform = open ? "" : "rotate(180deg)";
+        if (wrapper) {
+            if (open) wrapper.classList.remove("open");
+            else wrapper.classList.add("open");
+        }
+    }
+
+    function filtrarHistoricoAntenas(filtro, btn) {
+        document.querySelectorAll('.hist-filter-chip').forEach(c => c.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+
+        const rows = document.querySelectorAll('#list-antenas-historico tr[data-type]');
+        rows.forEach(r => {
+            const rowType = r.getAttribute('data-type');
+            if (filtro === 'todos') {
+                r.style.display = '';
+            } else if (filtro === 'quedas') {
+                r.style.display = (rowType === 'quedas') ? '' : 'none';
+            } else if (filtro === 'recup') {
+                r.style.display = (rowType === 'operacional') ? '' : 'none';
+            } else if (filtro === 'init') {
+                r.style.display = (rowType === 'init') ? '' : 'none';
+            }
+        });
+    }
+
+    function atualizarContadorHistorico() {
+        const rows = document.querySelectorAll("#list-antenas-historico tr[data-type]");
+        const total = rows.length;
+
+        let quedas = 0;
+        let recup = 0;
+        let inits = 0;
+        rows.forEach(r => {
+            const t = r.getAttribute('data-type');
+            if (t === 'quedas') quedas++;
+            else if (t === 'operacional') recup++;
+            else if (t === 'init') inits++;
+        });
+
+        const badge = document.getElementById("hist-count-badge");
+        if (badge) {
+            badge.textContent = total + " evento" + (total !== 1 ? "s" : "");
+            badge.style.background = quedas > 0 ? "rgba(239,68,68,0.12)" : "rgba(37,99,235,0.1)";
+            badge.style.color      = quedas > 0 ? "#dc2626" : "var(--primary)";
+            badge.style.borderColor= quedas > 0 ? "rgba(239,68,68,0.3)" : "rgba(37,99,235,0.2)";
+        }
+
+        const elStatEvents = document.getElementById("stat-ant-events");
+        if (elStatEvents) elStatEvents.innerText = total;
+
+        const cTodos = document.getElementById("count-chip-todos");
+        const cQuedas = document.getElementById("count-chip-quedas");
+        const cRecup = document.getElementById("count-chip-recup");
+        const cInit = document.getElementById("count-chip-init");
+        if (cTodos) cTodos.innerText = total;
+        if (cQuedas) cQuedas.innerText = quedas;
+        if (cRecup) cRecup.innerText = recup;
+        if (cInit) cInit.innerText = inits;
+    }
     function renderCharts(dateStr, counts) {
         const textColor = document.body.getAttribute('data-theme') === 'dark' ? '#cbd5e1' : '#334155';
         if(chartStatus) chartStatus.destroy();
